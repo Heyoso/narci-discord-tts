@@ -32,7 +32,10 @@ class TTSThread(threading.Thread):
         tts.endLoop()
 
 # partial matches to filter. can be regex
-blacklist = [ 'http', '```[^`]*```' ]
+blacklist = [
+        'http',
+        '```.*?```' # filter code blocks
+]
 
 # regex because it's probably the only relatively efficient way to do partial matching
 # (?i)          flag for case insensitivity

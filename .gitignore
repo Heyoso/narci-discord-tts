@@ -1,1 +1,7 @@
+# don't leak bot's token
 discord_key.py
+
+# ignore compiled and cached python scripts
+__pycache__/
+*.py[cod]
+*$py.class

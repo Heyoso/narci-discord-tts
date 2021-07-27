@@ -7,6 +7,7 @@ from discord.ext import commands
 from discord.utils import get
 import pyttsx3
 from discord_key import DISCORD_KEY
+from datetime import date
 
 # handle TTS on a separate thread to not block bot while reading messages
 class TTSThread(threading.Thread):
@@ -34,7 +35,8 @@ class TTSThread(threading.Thread):
 # partial matches to filter. can be regex
 blacklist = [
         'http',
-        '```.*?```' # filter code blocks
+        '```.*?```',
+        '<[^\s]*>'
 ]
 
 # regex because it's probably the only relatively efficient way to do partial matching
@@ -61,8 +63,16 @@ async def on_message(message):
     if message.channel.name == "verification": 
         await message.delete()
         return
-    if (message.author.id == bot.user.id or message.content[0]=='!'): return
-    print('{0.author}: {0.content}'.format(message))
+    
+    if len(message.content) == 0:        return
+    if message.author.id == bot.user.id: return
+    if message.content[0]=='!':          return
+    print('{0.author}: {0.clean_content}'.format(message))
+    
+    # logging
+    with open('D:/discord_chat_logs/' + str(date.today()) + '.txt', 'a', encoding='utf-8') as f:
+        f.write('{0.author}: {0.clean_content}\n'.format(message))
+        f.close()
 
     random.seed(message.author.id)
     queue.put({

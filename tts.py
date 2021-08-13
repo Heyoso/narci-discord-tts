@@ -9,6 +9,11 @@ import pyttsx3
 from discord_key import DISCORD_KEY
 from datetime import date
 
+voice_name_to_id = {}
+
+name_list = ['David', 'Catherine', 'James', 'Linda', 'Richard', 'George', 'Susan', 'Sean', 'Heera', 'Ravi', 'Eva', 'Mark', 'Hazel', 'Zira']
+# installed via Narrator settings on windows (windows key + control + N) and then also used Regedit to change Speech_OneCore/Voices to Speech/Voices.
+
 # handle TTS on a separate thread to not block bot while reading messages
 class TTSThread(threading.Thread):
     def __init__(self, queue):
@@ -20,6 +25,15 @@ class TTSThread(threading.Thread):
         tts = pyttsx3.init()
         tts.setProperty('volume', 0.75)
         voices = tts.getProperty('voices')
+        
+        for i in range (len(voices)):
+            print(voices[i].name)
+            for n in name_list:
+                if ('English' in voices[i].name) and (n in voices[i].name): 
+                    voice_name_to_id[n] = i
+                    break
+        print (voice_name_to_id)
+            
         tts.startLoop(False)
         running = True
         while running: # ok yea this runs forever maybe eventually handle shutdowns
@@ -75,26 +89,48 @@ async def on_message(message):
         f.close()
 
     random.seed(message.author.id)
+    rate = int((random.random() * 50) - 25)
+    thisvoice = -1
+    
+    for n in name_list:
+        if get(message.guild.roles, name=n) in message.author.roles:
+            thisvoice = voice_name_to_id[n]
+            break;
+    
+    if thisvoice == -1:
+        thisvoice = voice_name_to_id[name_list[random.randint(0, len(name_list)-1)]]
+        
     queue.put({
-        "voice": 1 if get(message.guild.roles, name="Zira") in message.author.roles else 0,
-        "rate_variance": int((random.random() * 50) - 25),
+        "voice": thisvoice,
+        "rate_variance": rate,
         "message": re.sub(re_blklst, " ", message.clean_content)
     })
 
 bot = commands.Bot(command_prefix='!')
 bot.add_listener(on_message, 'on_message')
 
+
 @bot.command()
 async def ping(ctx):
     await ctx.send('pong')
     
 @bot.command()
-async def zira(ctx):
-    role = get(ctx.guild.roles, name="Zira")
-    if(role in ctx.author.roles):
-        await ctx.author.remove_roles(role)
+async def setvoice(ctx, v):
+    v = v.capitalize()
+    role_list = list(map(lambda nm : get(ctx.guild.roles, name=nm), name_list))
+    #if the voice you want, v, is in the role list, then assign that.
+    if get(ctx.guild.roles, name=v) in role_list:
+        for r in role_list: # find any voice role user already has (in the role list) and remove it.
+            if r in ctx.author.roles:
+                await ctx.author.remove_roles(r) # removed.
+                break # should only have one of these so no need to continue this loop
+        await ctx.author.add_roles(get(ctx.guild.roles, name=v)) # assign new role.
     else:
-        await ctx.author.add_roles(role)
+        chat = get(bot.get_all_channels(), name="chat")
+        chatmsg = 'Use the command `!setvoice voicename` to set a voice. Valid voicenames are '
+        for n in name_list:
+            chatmsg += '`' + n + '`, '
+        await chat.send(chatmsg)
         
 @bot.command()
 async def verify(ctx):

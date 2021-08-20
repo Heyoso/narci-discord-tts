@@ -11,7 +11,7 @@ from datetime import date
 
 voice_name_to_id = {}
 
-name_list = ['David', 'Catherine', 'James', 'Linda', 'Richard', 'George', 'Susan', 'Sean', 'Heera', 'Ravi', 'Eva', 'Mark', 'Hazel', 'Zira']
+name_list = ['David', 'Catherine', 'James', 'Linda', 'Richard', 'George', 'Susan', 'Sean', 'Heera', 'Ravi', 'Eva', 'Mark', 'Hazel', 'Zira', 'Raul', 'Sabina']
 # installed via Narrator settings on windows (windows key + control + N) and then also used Regedit to change Speech_OneCore/Voices to Speech/Voices.
 
 # handle TTS on a separate thread to not block bot while reading messages
@@ -29,7 +29,7 @@ class TTSThread(threading.Thread):
         for i in range (len(voices)):
             print(voices[i].name)
             for n in name_list:
-                if ('English' in voices[i].name) and (n in voices[i].name): 
+                if n in voices[i].name: 
                     voice_name_to_id[n] = i
                     break
         print (voice_name_to_id)
@@ -74,6 +74,8 @@ re_blklst = re.compile('(?i)(?:^|\\s+)([^\\s]*(?:' + '|'.join('(?:{})'.format(ea
 queue = queue.Queue()
 
 async def on_message(message):
+    if isinstance(message.channel, discord.channel.DMChannel):
+        return
     if message.channel.name == "verification": 
         await message.delete()
         return
@@ -98,7 +100,7 @@ async def on_message(message):
             break;
     
     if thisvoice == -1:
-        thisvoice = voice_name_to_id[name_list[random.randint(0, len(name_list)-1)]]
+        thisvoice = voice_name_to_id[name_list[random.randint(0, len(name_list)-3)]] #ugly hack to prevent spanish random roll
         
     queue.put({
         "voice": thisvoice,
@@ -111,11 +113,13 @@ bot.add_listener(on_message, 'on_message')
 
 
 @bot.command()
+@commands.guild_only()
 async def ping(ctx):
     await ctx.send('pong')
     
 @bot.command()
-async def setvoice(ctx, v):
+@commands.guild_only()
+async def setvoice(ctx, v="default"):
     v = v.capitalize()
     role_list = list(map(lambda nm : get(ctx.guild.roles, name=nm), name_list))
     #if the voice you want, v, is in the role list, then assign that.
@@ -129,10 +133,13 @@ async def setvoice(ctx, v):
         chat = get(bot.get_all_channels(), name="chat")
         chatmsg = 'Use the command `!setvoice voicename` to set a voice. Valid voicenames are '
         for n in name_list:
+            if (n == 'Raul') or (n == 'Sabina'):
+                continue
             chatmsg += '`' + n + '`, '
         await chat.send(chatmsg)
         
 @bot.command()
+@commands.guild_only()
 async def verify(ctx):
     role = get(ctx.guild.roles, name="Verified")
     if not (role in ctx.author.roles):
@@ -142,4 +149,5 @@ async def verify(ctx):
 
 tts_thread = TTSThread(queue)
 
+bot.remove_command('help')
 bot.run(DISCORD_KEY)

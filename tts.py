@@ -54,7 +54,7 @@ blacklist = [
 ]
 
 # regex because it's probably the only relatively efficient way to do partial matching
-# (?i)          flag for case insensitivity
+# (?si)         flags for DOT matches NEWLINE, and case insensitivity
 # (?:^|\\s+)    begin looking at line start, or after any number of space
 #                   characters. (match entire words, part 1.)
 # (             begin a capture group. in this case, the entire word we want to
@@ -68,7 +68,7 @@ blacklist = [
 # [^\\s]*       capture any characters after a partial match. (ensure the
 #                   entire word is removed, part 2.) punctuation may get
 #                   absorbed here idk if it matters.
-re_blklst = re.compile('(?i)(?:^|\\s+)([^\\s]*(?:' + '|'.join('(?:{})'.format(each) for each in blacklist) + ')[^\\s]*)')
+re_blklst = re.compile('(?si)(?:^|\\s+)([^\\s]*(?:' + '|'.join('(?:{})'.format(each) for each in blacklist) + ')[^\\s]*)')
 
 # structure queued data as a dictionary with keys for voice, rate_variance, and message
 queue = queue.Queue()

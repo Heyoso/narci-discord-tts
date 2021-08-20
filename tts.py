@@ -4,7 +4,7 @@ import queue
 import random
 import discord
 from discord.ext import commands
-from discord.utils import get
+from discord.utils import get, remove_markdown
 import pyttsx3
 from discord_key import DISCORD_KEY
 from datetime import date
@@ -105,7 +105,7 @@ async def on_message(message):
     queue.put({
         "voice": thisvoice,
         "rate_variance": rate,
-        "message": re.sub(re_blklst, " ", message.clean_content)
+        "message": remove_markdown(re.sub(re_blklst, " ", message.clean_content))
     })
 
 bot = commands.Bot(command_prefix='!')

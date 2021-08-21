@@ -11,8 +11,14 @@ from datetime import date
 
 voice_name_to_id = {}
 
-name_list = ['David', 'Catherine', 'James', 'Linda', 'Richard', 'George', 'Susan', 'Sean', 'Heera', 'Ravi', 'Eva', 'Mark', 'Hazel', 'Zira', 'Raul', 'Sabina']
 # installed via Narrator settings on windows (windows key + control + N) and then also used Regedit to change Speech_OneCore/Voices to Speech/Voices.
+std_list = ['David', 'Catherine', 'James', 'Linda', 'Richard', 'George', 'Susan', 'Sean', 'Heera', 'Ravi', 'Eva', 'Mark', 'Hazel', 'Zira']
+secret_list = ['Raul', 'Sabina']
+name_list = std_list + secret_list
+
+# create the !setvoice usage without secret voices
+setvoice_help = 'Use the command `!setvoice voicename` to set a voice. Valid voicenames are `'
+setvoice_help += '`, `'.join(std_list) + "`"
 
 # handle TTS on a separate thread to not block bot while reading messages
 class TTSThread(threading.Thread):
@@ -74,6 +80,7 @@ re_blklst = re.compile('(?si)(?:^|\\s+)([^\\s]*(?:' + '|'.join('(?:{})'.format(e
 queue = queue.Queue()
 
 async def on_message(message):
+    global role_cache
     if isinstance(message.channel, discord.channel.DMChannel):
         return
     if message.channel.name == "verification": 
@@ -92,23 +99,34 @@ async def on_message(message):
 
     random.seed(message.author.id)
     rate = int((random.random() * 50) - 25)
-    thisvoice = -1
+    voicename = None
     
-    for n in name_list:
-        if get(message.guild.roles, name=n) in message.author.roles:
-            thisvoice = voice_name_to_id[n]
-            break;
-    
-    if thisvoice == -1:
-        thisvoice = voice_name_to_id[name_list[random.randint(0, len(name_list)-3)]] #ugly hack to prevent spanish random roll
+    # set intersection between possible voice roles, and whatever role the author has.
+    # empty set if user does not have any voice role,
+    # list containing the user's voice role otherwise.
+    prev = list(set(role_cache) & set(message.author.roles)) # less ugly? maybe
+    if len(prev) == 0:
+        voicename = random.choice(std_list)
+    else:
+        voicename = prev[0].name
         
     queue.put({
-        "voice": thisvoice,
+        "voice": voice_name_to_id[voicename],
         "rate_variance": rate,
         "message": remove_markdown(re.sub(re_blklst, " ", message.clean_content))
     })
 
+role_cache = None
+async def on_ready():
+    global role_cache
+    if role_cache is not None:
+        return
+    # this, of course, assumes only a single guild connected...
+    role_cache = list(map(lambda nm : get(bot.guilds[0].roles, name=nm), name_list))
+    print("role cache created.","FAILED!" if None in role_cache else "OK")
+
 bot = commands.Bot(command_prefix='!')
+bot.add_listener(on_ready, 'on_ready')
 bot.add_listener(on_message, 'on_message')
 
 
@@ -120,23 +138,21 @@ async def ping(ctx):
 @bot.command()
 @commands.guild_only()
 async def setvoice(ctx, v="default"):
+    global role_cache
     v = v.capitalize()
-    role_list = list(map(lambda nm : get(ctx.guild.roles, name=nm), name_list))
-    #if the voice you want, v, is in the role list, then assign that.
-    if get(ctx.guild.roles, name=v) in role_list:
-        for r in role_list: # find any voice role user already has (in the role list) and remove it.
-            if r in ctx.author.roles:
-                await ctx.author.remove_roles(r) # removed.
-                break # should only have one of these so no need to continue this loop
-        await ctx.author.add_roles(get(ctx.guild.roles, name=v)) # assign new role.
+
+    # is `v` a valid voice role?
+    if get(role_cache, name=v) is not None:
+        # does user have any previous voice roles? (should only ever be one...)
+        prev = list(set(role_cache) & set(ctx.author.roles))
+        if len(prev) > 0:
+            # if so, remove it
+            await ctx.author.remove_roles(*prev)
+        # add the new voice role
+        await ctx.author.add_roles(get(role_cache, name=v))
     else:
-        chat = get(bot.get_all_channels(), name="chat")
-        chatmsg = 'Use the command `!setvoice voicename` to set a voice. Valid voicenames are '
-        for n in name_list:
-            if (n == 'Raul') or (n == 'Sabina'):
-                continue
-            chatmsg += '`' + n + '`, '
-        await chat.send(chatmsg)
+        # if not, just set the usage
+        await ctx.send(setvoice_help)
         
 @bot.command()
 @commands.guild_only()

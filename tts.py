@@ -123,7 +123,7 @@ async def on_ready():
         return
     # this, of course, assumes only a single guild connected...
     role_cache = list(map(lambda nm : get(bot.guilds[0].roles, name=nm), name_list))
-    print("role cache created.","OK" if None in role_cache == 0 else "FAILED!")
+    print("role cache created.","FAILED!" if None in role_cache else "OK")
 
 bot = commands.Bot(command_prefix='!')
 bot.add_listener(on_ready, 'on_ready')

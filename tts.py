@@ -16,7 +16,7 @@ std_list = ['David', 'Catherine', 'James', 'Linda', 'Richard', 'George', 'Susan'
 secret_list = ['Raul', 'Sabina']
 name_list = std_list + secret_list
 
-# create the !setvocie usage without secret voices
+# create the !setvoice usage without secret voices
 setvoice_help = 'Use the command `!setvoice voicename` to set a voice. Valid voicenames are `'
 setvoice_help += '`, `'.join(std_list) + "`"
 
@@ -123,7 +123,7 @@ async def on_ready():
         return
     # this, of course, assumes only a single guild connected...
     role_cache = list(map(lambda nm : get(bot.guilds[0].roles, name=nm), name_list))
-    print("role cache created.","OK" if len(set(role_cache) & set([None])) == 0 else "FAILED!")
+    print("role cache created.","OK" if None in role_cache == 0 else "FAILED!")
 
 bot = commands.Bot(command_prefix='!')
 bot.add_listener(on_ready, 'on_ready')

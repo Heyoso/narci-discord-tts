@@ -119,6 +119,7 @@ async def ping(ctx):
     
 @bot.command()
 @commands.guild_only()
+@commands.has_role("Verified")
 async def setvoice(ctx, v="default"):
     v = v.capitalize()
     role_list = list(map(lambda nm : get(ctx.guild.roles, name=nm), name_list))
@@ -137,6 +138,13 @@ async def setvoice(ctx, v="default"):
                 continue
             chatmsg += '`' + n + '`, '
         await chat.send(chatmsg)
+
+@setvoice.error
+async def setvoice_on_error(ctx, error):
+    # ignore error when a user tries setvoice without the role
+    if not isinstance(error, commands.MissingRole):
+        # but we still care about other errors
+        raise error
         
 @bot.command()
 @commands.guild_only()

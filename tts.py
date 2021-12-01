@@ -117,7 +117,6 @@ async def on_message(message):
     for i in pop_list:
         activity.pop(i)
         member = message.guild.get_member(int(i))
-        role = get(message.guild.roles, name="Active")
         if (role in member.roles):
             await member.remove_roles(role)
     

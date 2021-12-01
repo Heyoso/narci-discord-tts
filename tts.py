@@ -2,15 +2,30 @@ import re
 import threading
 import queue
 import random
-import discord
-from discord.ext import commands
-from discord.utils import get, remove_markdown
+import json
+#import discord
+import nextcord
+from nextcord.ext import commands
+from nextcord.utils import get, remove_markdown
+# from discord.ext import commands
+# from discord.utils import get, remove_markdown
 import pyttsx3
 from discord_key import DISCORD_KEY
 from datetime import date
 import time
 
+intents = nextcord.Intents.default()
+intents.members = True
+
+
 voice_name_to_id = {}
+activity = {}
+activity_update = time.time()
+
+with open("D:/discord_chat_logs/activity.json", "r") as f:
+    activity = json.load(f)
+    
+print (activity)
 
 name_list = ['David', 'Catherine', 'James', 'Linda', 'Richard', 'George', 'Susan', 'Sean', 'Heera', 'Ravi', 'Eva', 'Mark', 'Hazel', 'Zira', 'Raul', 'Sabina']
 # installed via Narrator settings on windows (windows key + control + N) and then also used Regedit to change Speech_OneCore/Voices to Speech/Voices.
@@ -76,7 +91,7 @@ re_blklst = re.compile('(?si)(?:^|\\s+)([^\\s]*(?:' + '|'.join('(?:{})'.format(e
 queue = queue.Queue()
 
 async def on_message(message):
-    if isinstance(message.channel, discord.channel.DMChannel):
+    if isinstance(message.channel, nextcord.channel.DMChannel):
         return
     if message.channel.name == "verification": 
         await message.delete()
@@ -87,10 +102,31 @@ async def on_message(message):
     if message.content[0]=='!':          return
     print('{0.author}: {0.clean_content}'.format(message))
     
+    # Activity Stuff:
+    activity[str(message.author.id)] = time.time()
+    role = get(message.guild.roles, name="Active")
+    if not (role in message.author.roles):
+        await message.author.add_roles(role)
+     
+    pop_list = []
+    if (time.time() - activity_update) > 3600:
+        for user in activity:
+            if time.time() - activity[user] > 43200: # 12 hours
+                pop_list.append(user)
+    
+    for i in pop_list:
+        activity.pop(i)
+        member = message.guild.get_member(int(i))
+        role = get(message.guild.roles, name="Active")
+        if (role in member.roles):
+            await member.remove_roles(role)
+    
     # logging
     with open('D:/discord_chat_logs/' + str(date.today()) + '.txt', 'a', encoding='utf-8') as f:
         f.write('{0.author}: {0.clean_content}\n'.format(message))
         f.close()
+    with open('D:/discord_chat_logs/activity.json', 'w', encoding='utf-8') as f:
+        json.dump(activity, f)
 
     random.seed(message.author.id)
     rate = int((random.random() * 50) - 25)
@@ -110,7 +146,7 @@ async def on_message(message):
         "message": remove_markdown(re.sub(re_blklst, " ", message.clean_content))
     })
 
-bot = commands.Bot(command_prefix='!')
+bot = commands.Bot(command_prefix='!', intents=intents)
 bot.add_listener(on_message, 'on_message')
 
 
@@ -133,7 +169,7 @@ async def setvoice(ctx, v="default"):
                 break # should only have one of these so no need to continue this loop
         await ctx.author.add_roles(get(ctx.guild.roles, name=v)) # assign new role.
     else:
-        chat = get(bot.get_all_channels(), name="chat")
+        chat = get(bot.get_all_channels(), name="flow")
         chatmsg = 'Use the command `!setvoice voicename` to set a voice. Valid voicenames are '
         for n in name_list:
             if (n == 'Raul') or (n == 'Sabina'):
@@ -154,7 +190,7 @@ async def verify(ctx):
     role = get(ctx.guild.roles, name="Verified")
     if not (role in ctx.author.roles):
         await ctx.author.add_roles(role)
-        chat = get(bot.get_all_channels(), name="chat")
+        chat = get(bot.get_all_channels(), name="flow")
         await chat.send(ctx.author.display_name + ' joined.')
 
 tts_thread = TTSThread(queue)
